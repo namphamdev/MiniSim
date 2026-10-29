@@ -96,7 +96,10 @@ class Menu: NSMenu {
 
     @objc private func subMenuClick(_ sender: NSMenuItem) {
       guard let tag = SubMenuItems.Tags(rawValue: sender.tag) else { return }
-      guard let device = getDeviceByName(name: sender.parent?.title ?? "") else { return }
+      // The device list refreshes every time the menu opens and replaces the device items,
+      // so a submenu opened before the refresh finishes has no parent left to look up.
+      guard let device = sender.representedObject as? Device
+        ?? getDeviceByName(name: sender.parent?.title ?? "") else { return }
 
       let skipConfirmation = NSEvent.modifierFlags.contains(.shift)
 
@@ -256,7 +259,10 @@ class Menu: NSMenu {
             isDeviceBooted: device.booted,
             callback: callback
         )
-        (actionsSubMenu + customCommandSubMenu).forEach { subMenu.addItem($0) }
+        (actionsSubMenu + customCommandSubMenu).forEach { item in
+            item.representedObject = device
+            subMenu.addItem(item)
+        }
         return subMenu
     }
 
