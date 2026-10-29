@@ -39,7 +39,7 @@ class ActionFactoryTests: XCTestCase {
         XCTAssertTrue(action is PasteClipboardAction)
       case .upload:
         XCTAssertTrue(action is UploadToDownloadsAction)
-      case .localFiles:
+      case .localFiles, .launchSlim, .launchStock:
         XCTAssertTrue(action is UnsupportedAction)
       case .delete:
         XCTAssertTrue(action is DeleteAction)
@@ -76,6 +76,10 @@ class ActionFactoryTests: XCTestCase {
         XCTAssertTrue(action is UploadToSimulatorFilesAction)
       case .localFiles:
         XCTAssertTrue(action is OpenSimulatorFilesAction)
+      case .launchSlim:
+        XCTAssertTrue(action is LaunchSlimAction)
+      case .launchStock:
+        XCTAssertTrue(action is LaunchStockAction)
       case .customCommand:
         XCTAssertTrue(action is CustomCommandAction)
       default:

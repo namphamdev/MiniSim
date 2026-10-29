@@ -42,6 +42,8 @@ enum SubMenuItems {
         case logcat
         case upload
         case localFiles
+        case launchSlim
+        case launchStock
         case customCommand = 200
     }
 
@@ -93,6 +95,36 @@ enum SubMenuItems {
         let image = NSImage(
             systemSymbolName: "sunrise.fill",
             accessibilityDescription: "Cold boot"
+        )
+    }
+
+    struct LaunchSlim: SubMenuActionItem {
+        let title = NSLocalizedString("Launch slim (simslim)", comment: "")
+        let tag = Tags.launchSlim.rawValue
+        let bootsDevice = true
+        let needBootedDevice = false
+        let image = NSImage(
+            systemSymbolName: "leaf",
+            accessibilityDescription: "Launch slim"
+        )
+        let toolTip: String? = NSLocalizedString(
+            "Boot with background daemons the simulator doesn't need turned off",
+            comment: ""
+        )
+    }
+
+    struct LaunchStock: SubMenuActionItem {
+        let title = NSLocalizedString("Launch stock (simslim off)", comment: "")
+        let tag = Tags.launchStock.rawValue
+        let bootsDevice = true
+        let needBootedDevice = false
+        let image = NSImage(
+            systemSymbolName: "arrow.uturn.backward",
+            accessibilityDescription: "Launch stock"
+        )
+        let toolTip: String? = NSLocalizedString(
+            "Restore all background daemons and boot the simulator",
+            comment: ""
         )
     }
 
@@ -209,10 +241,13 @@ extension SubMenuItems {
         CopyUDID()
       ]
     case (.ios, .virtual):
+      let simslimItems: [SubMenuItem] = Simslim.isInstalled
+        ? [Separator(), LaunchSlim(), LaunchStock()]
+        : []
       return [
         CopyName(),
-        CopyUDID(),
-
+        CopyUDID()
+      ] + simslimItems + [
         Separator(),
 
         SectionTitle(

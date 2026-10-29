@@ -11,6 +11,8 @@ import SwiftUI
 struct Preferences: View {
     @State var menuImageSelected: String = "iphone"
     @State private var preferedTerminal: Terminal
+    @State private var simslimVersion: String?
+    @State private var isInstallingSimslim = false
 
     init() {
         let userPrefered = UserDefaults.standard.preferedTerminal
@@ -61,6 +63,39 @@ struct Preferences: View {
                 Text("Global shortcut to open the application \nDefault: ⌥⇧E")
                     .descriptionText()
             }
+            Settings.Section(title: "simslim:") {
+                HStack {
+                    Image(systemName: simslimVersion == nil ? "xmark.circle.fill" : "checkmark.circle.fill")
+                        .foregroundColor(simslimVersion == nil ? .red : .green)
+                    Text(simslimVersion.map { "Installed (\($0))" } ?? "Not installed")
+                }
+                HStack {
+                    Button("Check again") {
+                        checkSimslim()
+                    }
+                    .disabled(isInstallingSimslim)
+                    if simslimVersion == nil {
+                        if Simslim.brewPath != nil {
+                            Button("Install with Homebrew") {
+                                installSimslim()
+                            }
+                            .disabled(isInstallingSimslim)
+                        } else {
+                            Button("Open install guide") {
+                                if let url = URL(string: DeviceConstants.simslimRepositoryURL) {
+                                    NSWorkspace.shared.open(url)
+                                }
+                            }
+                        }
+                    }
+                    if isInstallingSimslim {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+                }
+                Text("Adds \"Launch slim\" to iOS simulators, turning off background \ndaemons a simulator doesn't need to use ~4x less memory.")
+                    .descriptionText()
+            }
             Settings.Section(title: "Cache:") {
                 Button("Clear cache") {
                     resetDefaults()
@@ -75,10 +110,40 @@ struct Preferences: View {
         }
         .frame(minWidth: 650, minHeight: 450)
         .onAppear {
+            checkSimslim()
             MenuImage.allCases.forEach { image in
                 if UserDefaults.standard.menuImage == image.rawValue {
                     menuImageSelected = image.rawValue
                 }
+            }
+        }
+    }
+
+    func checkSimslim() {
+        DispatchQueue.global(qos: .userInitiated).async {
+            let version = Simslim.version()
+            DispatchQueue.main.async {
+                simslimVersion = version
+            }
+        }
+    }
+
+    func installSimslim() {
+        isInstallingSimslim = true
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                try Simslim.installWithBrew()
+                let version = Simslim.version()
+                DispatchQueue.main.async {
+                    simslimVersion = version
+                    isInstallingSimslim = false
+                }
+                MiniSim.showSuccessMessage(title: "simslim installed", message: version ?? "")
+            } catch {
+                DispatchQueue.main.async {
+                    isInstallingSimslim = false
+                }
+                NSAlert.showError(message: error.localizedDescription)
             }
         }
     }

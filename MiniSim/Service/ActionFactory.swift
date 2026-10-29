@@ -24,6 +24,8 @@ class AndroidActionFactory: ActionFactory {
       return UploadToDownloadsAction(device: device)
     case .localFiles:
       return UnsupportedAction(message: "Local Files is only available for iOS simulators.")
+    case .launchSlim, .launchStock:
+      return UnsupportedAction(message: "simslim is only available for iOS simulators.")
     case .delete:
       return DeleteAction(device: device, skipConfirmation: skipConfirmation)
     case .customCommand:
@@ -45,6 +47,10 @@ class IOSActionFactory: ActionFactory {
       return UploadToSimulatorFilesAction(device: device)
     case .localFiles:
       return OpenSimulatorFilesAction(device: device)
+    case .launchSlim:
+      return LaunchSlimAction(device: device)
+    case .launchStock:
+      return LaunchStockAction(device: device)
     case .customCommand:
       return CustomCommandAction(device: device, itemName: itemName)
     case .coldBoot:

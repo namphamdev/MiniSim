@@ -450,3 +450,111 @@ class OpenSimulatorFilesAction: Action {
     }
   }
 }
+
+// MARK: iOS Simulator simslim Actions
+
+enum Simslim {
+  static var shell: ShellProtocol = Shell()
+
+  static var executablePath: String? {
+    firstExecutable(in: DeviceConstants.simslimSearchPaths)
+  }
+
+  static var isInstalled: Bool {
+    executablePath != nil
+  }
+
+  static var brewPath: String? {
+    firstExecutable(in: DeviceConstants.brewSearchPaths)
+  }
+
+  /// Returns the installed version, e.g. "0.13.0", or nil when simslim is missing.
+  static func version() -> String? {
+    guard let simslim = executablePath,
+          let output = try? shell.execute(command: simslim, arguments: ["--version"]) else {
+      return nil
+    }
+    return output
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+      .replacingOccurrences(of: "simslim ", with: "")
+  }
+
+  static func installWithBrew() throws {
+    Thread.assertBackgroundThread()
+    guard let brew = brewPath else {
+      throw SimslimError.brewNotInstalled
+    }
+    // Skip brew's auto-update: it can take minutes and isn't needed to install one formula.
+    try shell.execute(
+      command: "HOMEBREW_NO_AUTO_UPDATE=1 \(Shell.escapeShellArgument(brew))",
+      arguments: ["install", DeviceConstants.simslimBrewFormula]
+    )
+  }
+
+  private static func firstExecutable(in paths: [String]) -> String? {
+    paths
+      .map { NSString(string: $0).expandingTildeInPath }
+      .first { FileManager.default.isExecutableFile(atPath: $0) }
+  }
+}
+
+enum SimslimError: Error {
+  case notInstalled
+  case brewNotInstalled
+}
+
+extension SimslimError: LocalizedError {
+  var errorDescription: String? {
+    switch self {
+    case .notInstalled:
+      return NSLocalizedString(
+        "simslim was not found. Install it from Preferences or with `brew install mobai-app/tap/simslim`.",
+        comment: ""
+      )
+    case .brewNotInstalled:
+      return NSLocalizedString(
+        "Homebrew was not found. Install Homebrew or follow the simslim install guide on GitHub.",
+        comment: ""
+      )
+    }
+  }
+}
+
+/// Runs `simslim on|off`, which also boots the simulator, then brings up Simulator.app.
+/// simslim boots first so the device comes up in its final state in a single boot.
+class SimslimLaunchAction: Action {
+  let device: Device
+  let subcommand: String
+  let successTitle: String
+  var shell: ShellProtocol = Shell()
+
+  init(device: Device, subcommand: String, successTitle: String) {
+    self.device = device
+    self.subcommand = subcommand
+    self.successTitle = successTitle
+  }
+
+  func execute() throws {
+    guard let simslim = Simslim.executablePath else {
+      throw SimslimError.notInstalled
+    }
+    guard let uuid = device.identifier, !uuid.isEmpty else {
+      throw SimulatorFilesError.missingIdentifier
+    }
+    try shell.execute(command: simslim, arguments: [subcommand, uuid])
+    try AppleUtils.launchSimulatorApp(uuid: uuid)
+    MiniSim.showSuccessMessage(title: successTitle, message: device.name)
+  }
+}
+
+final class LaunchSlimAction: SimslimLaunchAction {
+  init(device: Device) {
+    super.init(device: device, subcommand: "on", successTitle: "Simulator launched slim")
+  }
+}
+
+final class LaunchStockAction: SimslimLaunchAction {
+  init(device: Device) {
+    super.init(device: device, subcommand: "off", successTitle: "Simulator launched stock")
+  }
+}
